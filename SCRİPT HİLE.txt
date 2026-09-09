@@ -1,0 +1,275 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- --- AYARLAR VE DURUMLAR ---
+local espEnabled = false
+local aimbotEnabled = false
+
+local toggleMenuKey = Enum.KeyCode.L      -- Menü Aç/Kapat [L]
+local toggleAimbotKey = Enum.KeyCode.P    -- Aimbot Aç/Kapat [P]
+local toggleEspKey = Enum.KeyCode.I       -- ESP Aç/Kapat [I]
+
+-- ESP Deposu
+local espHighlights = {}
+local espBillboardGuis = {}
+
+-- --- GUI OLUŞTURMA (SİYAH - BEYAZ TEMA) ---
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("RutyMenuGui") then
+	playerGui.RutyMenuGui:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RutyMenuGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Ana Menü
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 240, 0, 230)
+mainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Siyah
+mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)  -- Beyaz Çerçeve
+mainFrame.BorderSizePixel = 2
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Visible = true
+mainFrame.Parent = screenGui
+
+-- Başlık: RUTY
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Beyaz
+titleLabel.Text = "RUTY"
+titleLabel.TextColor3 = Color3.fromRGB(0, 0, 0)             -- Siyah Yazı
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.Parent = mainFrame
+
+-- ESP Butonu
+local espBtn = Instance.new("TextButton")
+espBtn.Name = "EspButton"
+espBtn.Size = UDim2.new(0.85, 0, 0, 35)
+espBtn.Position = UDim2.new(0.075, 0, 0.25, 0)
+espBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+espBtn.BorderColor3 = Color3.fromRGB(255, 255, 255)
+espBtn.Text = "ESP: KAPALI [I]"
+espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+espBtn.TextSize = 14
+espBtn.Font = Enum.Font.SourceSans
+espBtn.Parent = mainFrame
+
+-- Aimbot Butonu
+local aimbotBtn = Instance.new("TextButton")
+aimbotBtn.Name = "AimbotButton"
+aimbotBtn.Size = UDim2.new(0.85, 0, 0, 35)
+aimbotBtn.Position = UDim2.new(0.075, 0, 0.45, 0)
+aimbotBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+aimbotBtn.BorderColor3 = Color3.fromRGB(255, 255, 255)
+aimbotBtn.Text = "Aimbot: KAPALI [P]"
+aimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+aimbotBtn.TextSize = 14
+aimbotBtn.Font = Enum.Font.SourceSans
+aimbotBtn.Parent = mainFrame
+
+-- Bilgi Etiketi
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Size = UDim2.new(1, 0, 0, 30)
+infoLabel.Position = UDim2.new(0, 0, 0.8, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "Menü: [L] | ESP: [I] | Aimbot: [P]"
+infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+infoLabel.TextSize = 12
+infoLabel.Font = Enum.Font.SourceSansItalic
+infoLabel.Parent = mainFrame
+
+-- --- KESİNTİSİZ ESP MANTIKI ---
+local function clearESP()
+	for p, h in pairs(espHighlights) do 
+		if h then h:Destroy() end 
+	end
+	for p, b in pairs(espBillboardGuis) do 
+		if b then b:Destroy() end 
+	end
+	espHighlights = {}
+	espBillboardGuis = {}
+end
+
+local function applyESPToPlayer(player)
+	if not espEnabled or player == LocalPlayer then return end
+
+	local char = player.Character
+	if not char then return end
+
+	local head = char:FindFirstChild("Head")
+	local humanoid = char:FindFirstChild("Humanoid")
+
+	if head and humanoid and humanoid.Health > 0 then
+		-- Yeşil Parlama (Highlight)
+		if not espHighlights[player] or espHighlights[player].Parent ~= char then
+			if espHighlights[player] then espHighlights[player]:Destroy() end
+			
+			local highlight = Instance.new("Highlight")
+			highlight.Name = "RutyESP"
+			highlight.Adornee = char
+			highlight.FillColor = Color3.fromRGB(0, 255, 0)
+			highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+			highlight.FillTransparency = 0.5
+			highlight.OutlineTransparency = 0
+			highlight.Parent = char
+			espHighlights[player] = highlight
+		end
+
+		-- İsim Etiketi (BillboardGui)
+		if not espBillboardGuis[player] or espBillboardGuis[player].Parent ~= head then
+			if espBillboardGuis[player] then espBillboardGuis[player]:Destroy() end
+
+			local billboard = Instance.new("BillboardGui")
+			billboard.Name = "RutyNameTag"
+			billboard.Adornee = head
+			billboard.Size = UDim2.new(0, 100, 0, 30)
+			billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+			billboard.AlwaysOnTop = true
+
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(1, 0, 1, 0)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = player.Name
+			nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+			nameLabel.TextStrokeTransparency = 0
+			nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+			nameLabel.TextSize = 14
+			nameLabel.Font = Enum.Font.SourceSansBold
+			nameLabel.Parent = billboard
+
+			billboard.Parent = head
+			espBillboardGuis[player] = billboard
+		end
+	end
+end
+
+local function updateESP()
+	if not espEnabled then
+		clearESP()
+		return
+	end
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer then
+			applyESPToPlayer(player)
+		end
+	end
+end
+
+-- Oyuncular doğduğunda ESP'yi otomatik bağla
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		if espEnabled then
+			applyESPToPlayer(player)
+		end
+	end)
+end)
+
+for _, player in pairs(Players:GetPlayers()) do
+	if player ~= LocalPlayer then
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if espEnabled then
+				applyESPToPlayer(player)
+			end
+		end)
+	end
+end
+
+-- --- AIMBOT MANTIKI ---
+local function getClosestPlayer()
+	local closestPlayer = nil
+	local shortestDistance = math.huge
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+			local head = player.Character.Head
+			local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+			if onScreen then
+				local mousePos = UserInputService:GetMouseLocation()
+				local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closestPlayer = player
+				end
+			end
+		end
+	end
+	return closestPlayer
+end
+
+-- --- AÇ / KAPAT FONKSİYONLARI ---
+local function toggleESP()
+	espEnabled = not espEnabled
+	if espEnabled then
+		espBtn.Text = "ESP: AÇIK [I]"
+		espBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+		updateESP()
+	else
+		espBtn.Text = "ESP: KAPALI [I]"
+		espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		clearESP()
+	end
+end
+
+local function toggleAimbot()
+	aimbotEnabled = not aimbotEnabled
+	if aimbotEnabled then
+		aimbotBtn.Text = "Aimbot: AÇIK [P]"
+		aimbotBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+	else
+		aimbotBtn.Text = "Aimbot: KAPALI [P]"
+		aimbotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end
+end
+
+espBtn.MouseButton1Click:Connect(toggleESP)
+aimbotBtn.MouseButton1Click:Connect(toggleAimbot)
+
+-- --- TUŞ KONTROLLERİ ([L], [P], [I]) ---
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	-- Menü Aç/Kapat (L)
+	if input.KeyCode == toggleMenuKey then
+		mainFrame.Visible = not mainFrame.Visible
+	end
+
+	-- ESP Aç/Kapat (I)
+	if input.KeyCode == toggleEspKey then
+		toggleESP()
+	end
+
+	-- Aimbot Aç/Kapat (P)
+	if input.KeyCode == toggleAimbotKey then
+		toggleAimbot()
+	end
+end)
+
+-- --- SÜREKLİ DÖNGÜ ---
+RunService.RenderStepped:Connect(function()
+	if espEnabled then
+		updateESP()
+	end
+
+	-- Sağ Tık Basılı Tuttuğunda Aimbot Çalışır
+	if aimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+		local target = getClosestPlayer()
+		if target and target.Character and target.Character:FindFirstChild("Head") then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+		end
+	end
+end)
